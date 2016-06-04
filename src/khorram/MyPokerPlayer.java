@@ -22,10 +22,6 @@ public class MyPokerPlayer implements PokerPlayer {
 	private List<PokerCard> communityCards;
 	private static Map<String, ArrayList<Double>> preFlopPossibleOptions;
 	private int sizeOfPot;
-
-	/*
-	 * If ranks are the same, the suits don't matter.
-	 */
 	static {
 		
 		// initialize HashMap, Synchronize it for thread-safety.
@@ -86,13 +82,6 @@ public class MyPokerPlayer implements PokerPlayer {
 		}
 		System.out.println(preFlopPossibleOptions);
 		System.out.println("How many times called: " + sum);
-
-		//		try {
-		//			readFlops();
-		//		} catch (FileNotFoundException e) {
-		//			// TODO Auto-generated catch block
-		//			e.printStackTrace();
-		//		}
 	}
 
 	public MyPokerPlayer(){
@@ -146,12 +135,7 @@ public class MyPokerPlayer implements PokerPlayer {
 	public void setId(String id) {
 		this.id = id;
 	}
-	/*
-	 * (non-Javadoc)
-	 * @see pokergame.PokerPlayer#decide(pokergame.PokerGameDetails, int)
-	 * 
-	 * 
-	 */
+	
 	@Override
 	public PokerDecision decide(PokerGameDetails game, int betRequiredToCall) {
 		
@@ -274,27 +258,6 @@ public class MyPokerPlayer implements PokerPlayer {
 				.parallel()
 				.map(set -> bestHandCustom(set)) // creates a list of PokerHand combinations.
 				.forEach(e -> stats.compute(e.Category().ordinal(), (k, v) -> v == null ? 1 : v + 1));
-//						(e.Category().toString(), stats.get(e.Category().toString()) + 1));
-				
-//				// We now have community cards visible.
-//				// Loop through each possible community card combo
-//				for(List<PokerCard> card : allPossibleHoleCards){
-//					
-//					// Get poker hand for current variation
-//					PokerHand tempHand = bestHandCustom(card);
-//					
-//					// Get Key (Category)
-//					String key = tempHand.Category().toString();
-//					
-//					// Get previous value
-//					int oldValue = stats.get(key);
-//										
-//					// Increment by 1
-//					int newValue = oldValue += 1;
-//					
-//					// Update record.
-//					stats.put(key, newValue);
-//				}
 				
 				
 				System.out.println(stats);				
@@ -495,14 +458,10 @@ public class MyPokerPlayer implements PokerPlayer {
 
 	public static void readFlops() throws FileNotFoundException{
 		String buildUp = "";
-		int sum = 0;
 		Scanner console = new Scanner(new File("winning_perc_sheet.csv"));
 		console.nextLine(); // Remove first line
 		while(console.hasNextLine()){
-			sum++;
 			buildUp += console.nextLine() + "; ";
 		}
-		System.out.println(buildUp);
-		System.out.println("amount of loops: " + sum);
 	}
 }
