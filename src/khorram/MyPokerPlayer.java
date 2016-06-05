@@ -273,7 +273,6 @@ public class MyPokerPlayer implements PokerPlayer {
 
 				// parallel processing:
 				allPossibleHoleCards.stream()
-				.parallel()
 				.map(set -> bestHandCustom(set)) // creates a list of PokerHand combinations.
 				.forEach(e -> stats.compute(e.Category().ordinal(), (k, v) -> v == null ? 1 : v + 1));
 
