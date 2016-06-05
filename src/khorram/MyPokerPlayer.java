@@ -167,7 +167,7 @@ public class MyPokerPlayer implements PokerPlayer {
 			// Get the exact amount of all players still playing
 			int opponents = numberOfPlayers.length - 2; // - 1 To remove self from list of _all_ players. -2 because of 0 based index
 
-			// If amount of opponents is more than 9:
+			// If amount of opponents is more than 8:
 			if(opponents > 8){
 				opponents = 8;
 			}
@@ -176,10 +176,6 @@ public class MyPokerPlayer implements PokerPlayer {
 			// 100 = MAX RISK
 			// 0 = LOWEST RISK
 			Double probability = 0.00;
-
-			// Calculate what to raise by.
-			// Should be multiple of betRequiredToCall
-			boolean highRisk = false;
 
 			if(game.round().toString().equals("PREFLOP")){ // Game is in PREFLOP
 
@@ -215,53 +211,45 @@ public class MyPokerPlayer implements PokerPlayer {
 					betRequiredToCall = game.bigBlind();
 				}
 
-
+				/*
+				 * Start looking at all possible values from data-set:
+				 * 
+				 * if(> 20.00) RAISE 2*
+				 * 
+				 * if(> 15.00) CALL
+				 * 
+				 * if(> 5.00 AND potOdds > 150) CALL
+				 * 
+				 * FOLD
+				 */
 				// If probability is too low, then just fold.
-				if(probability < 20.0){
-					return new PokerDecision(PokerDecision.TYPE.FOLD);
-				}
-
-				// Risk option, be careful.
-				if(numChips < 50){
-					highRisk = true;
-				}
-
-				if(probability > 50.0){ // Very confident
-
-					// But still high risk.
-					if(highRisk){
-
-						// Still play it safe, Call.
-						return new PokerDecision(PokerDecision.TYPE.CALL);
+				
+				if (probability > 20.00){
+					
+					// I've already raised, slow down and call.
+					if(countRaise > 0){
+						// reset countRaise back to 0:
+						countRaise = 0;
+						
+						// And immediately call
+						return call();
 					}
-
-					// not high risk, raise with good cards.
-					// If I can raise blind by *[4-0), do it.
-					int raiseAmount = raiseDecision(betRequiredToCall); // betRequiredToCall will ALWAYS be > 0
-
-					// Can't raise any further, only option..
-					if(raiseAmount - betRequiredToCall == 0){
-						return new PokerDecision(PokerDecision.TYPE.CALL);
-					}
-
-					return new PokerDecision(PokerDecision.TYPE.RAISE, raiseAmount - betRequiredToCall);
-				} // End of high-probability
-
-				// probability less than 50% and more than 20%
-				// Never raise from this, only Call or Fold.
-				else if(probability > 20){
-
-					// Check again if high risk, still have a good amount of chips remaining and potSize is small.
-					if(highRisk && numChips > 950 && sizeOfPot < 80){
-						// If high risk and this low of probability, just fold.
-						return new PokerDecision(PokerDecision.TYPE.FOLD);
-					}
-
-					// Otherwise, call is okay in this case.
-					return new PokerDecision(PokerDecision.TYPE.CALL);
-				} else { // Probability super low, less than 20%
-					return new PokerDecision(PokerDecision.TYPE.FOLD);
+					
+					countRaise++;
+					
+					int raiseAmount = betRequiredToCall * 2;
+					
+					if(numChips - raiseAmount > 0) return raise(raiseAmount);
+					
+					return call();
+					
 				}
+				
+				if(probability > 10.00) return call();
+						
+				if(probability > 5.00 && sizeOfPot > 50) return call();
+				
+				return fold();
 
 			} else { // For Flop, River or Turn [0 - 8]
 
@@ -330,6 +318,17 @@ public class MyPokerPlayer implements PokerPlayer {
 					
 					
 					if (possibleCombos < 50) {
+						
+						// I've raised more than 2 times in a row, slow down and call.
+						if(countRaise > 3){
+							// reset countRaise back to 0:
+							countRaise = 0;
+							
+							// And immediately call
+							return call();
+						}
+						
+						
 						countRaise++;
 						int raiseAmount = betRequiredToCall * 2;
 						
@@ -340,13 +339,13 @@ public class MyPokerPlayer implements PokerPlayer {
 						return call();
 					}
 					
-					if (possibleCombos < 275) return call();
+					if (possibleCombos < 225) return call();
 					
 					if (possibleCombos < 400 && sizeOfPot > 100) return call();
 					
-					if (possibleCombos < 800 && sizeOfPot > 150) return call();
+					if (possibleCombos < 800 && sizeOfPot > 200) return call();
 					
-					if (possibleCombos > 800 && sizeOfPot > 250) return call();
+					if (possibleCombos > 800 && sizeOfPot > 300) return call();
 					
 					// before folding, so I don't get disqualified for folding too often.
 					if (numChips < 50){
