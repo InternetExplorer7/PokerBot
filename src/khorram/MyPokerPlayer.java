@@ -23,32 +23,32 @@ public class MyPokerPlayer implements PokerPlayer {
 	private static Map<String, ArrayList<Double>> preFlopPossibleOptions;
 	private int sizeOfPot;
 	static {
-		
+
 		// initialize HashMap, Synchronize it for thread-safety.
 		// HIGH_CARD, PAIR, TWO_PAIR, THREE_OF_A_KIND, STRAIGHT, FLUSH, FULL_HOUSE, FOUR_OF_A_KIND, STRAIGHT_FLUSH
 		stats = Collections.synchronizedMap(new HashMap<Integer, Integer>());
-		
+
 		allPossibleHoleCards = new ArrayList<List<PokerCard>>();
 		// All possible first cards
 		for(int i = 0; i < 51; i++){
 			// All all possible second cards
 			for(int j = i + 1; j < 52; j++){
-				
+
 				// Set up first card
 				PokerCard firstCard = new PokerCard(i);
-				
+
 				// Set up second card.
 				PokerCard secondCard = new PokerCard(j);
-				
+
 				// Set up new list to merge firstCard and secondCard
 				List<PokerCard> combo = new ArrayList<PokerCard>();
-				
+
 				// Add first card
 				combo.add(firstCard);
-				
+
 				// Add second card
 				combo.add(secondCard);
-				
+
 				// Add combo to main ArrayList
 				allPossibleHoleCards.add(combo);
 			}
@@ -103,6 +103,7 @@ public class MyPokerPlayer implements PokerPlayer {
 			// Clear out all cards from all sets
 			holeCards.clear();
 			communityCards.clear();
+			stats.clear();
 		}
 	}
 
@@ -135,10 +136,10 @@ public class MyPokerPlayer implements PokerPlayer {
 	public void setId(String id) {
 		this.id = id;
 	}
-	
+
 	@Override
 	public PokerDecision decide(PokerGameDetails game, int betRequiredToCall) {
-		
+
 		try {
 			// Get the size of the pot
 			sizeOfPot = game.sizePot();
@@ -156,6 +157,11 @@ public class MyPokerPlayer implements PokerPlayer {
 
 			// Get the exact amount of all players still playing
 			int opponents = numberOfPlayers.length - 2; // - 1 To remove self from list of _all_ players. -2 because of 0 based index
+
+			// If amount of opponents is more than 9:
+			if(opponents > 8){
+				opponents = 8;
+			}
 
 			// probability rating, to be used at the end to determine what move to play.
 			// 100 = MAX RISK
@@ -223,7 +229,7 @@ public class MyPokerPlayer implements PokerPlayer {
 					// not high risk, raise with good cards.
 					// If I can raise blind by *[4-0), do it.
 					int raiseAmount = raiseDecision(betRequiredToCall); // betRequiredToCall will ALWAYS be > 0
-					
+
 					// Can't raise any further, only option..
 					if(raiseAmount - betRequiredToCall == 0){
 						return new PokerDecision(PokerDecision.TYPE.CALL);
@@ -236,8 +242,8 @@ public class MyPokerPlayer implements PokerPlayer {
 				// Never raise from this, only Call or Fold.
 				else if(probability > 20){
 
-					// Check again if high risk
-					if(highRisk && numChips > 450){
+					// Check again if high risk, still have a good amount of chips remaining and potSize is small.
+					if(highRisk && numChips > 950 && sizeOfPot < 80){
 						// If high risk and this low of probability, just fold.
 						return new PokerDecision(PokerDecision.TYPE.FOLD);
 					}
@@ -249,18 +255,32 @@ public class MyPokerPlayer implements PokerPlayer {
 				}
 
 			} else { // For Flop, River or Turn [0 - 8]
-				
+
 				// Get my best hand
 				PokerHand bestHand = bestHand();
+
+				System.out.println("my hand ordinal: " + bestHand.Category().ordinal() + "; str: " + bestHand.Category().toString());
 				
-				// parallel processing example:
+				// Get sum
+				int sum = stats.entrySet().stream()
+				.parallel()
+				.mapToInt(e -> e.getValue())
+				.sum();
+				
+				stats.entrySet().stream()
+				.parallel()
+				.forEach(e -> stats.compute(e.getKey(), (k, v) -> sum >= 1326 ? 0 : v));
+
+				// parallel processing:
 				allPossibleHoleCards.stream()
 				.parallel()
 				.map(set -> bestHandCustom(set)) // creates a list of PokerHand combinations.
 				.forEach(e -> stats.compute(e.Category().ordinal(), (k, v) -> v == null ? 1 : v + 1));
-				
-				
-				System.out.println(stats);				
+
+
+				System.out.println("data: " + stats);
+
+
 				// If I can check, do that instead.
 				if(betRequiredToCall == 0){
 					return new PokerDecision(PokerDecision.TYPE.CALL);
@@ -271,18 +291,18 @@ public class MyPokerPlayer implements PokerPlayer {
 					// Check the size of the pot, might be worth it.
 					// > 600, large pot.
 					if(game.sizePot() > 1000){
-						
+
 						// Go all in.
 						// set raiseAll amount.
 						int raiseAll = numChips - betRequiredToCall;
-						
+
 						// Check if raiseAll is 0
 						if(raiseAll < 1){
-							
+
 							// can't raise by 0, numChips is same as betRequiredToCall. Just call instead
 							return new PokerDecision(PokerDecision.TYPE.CALL);
 						}
-						
+
 						// raiseAll is > 0, now we can go all in.
 						return new PokerDecision(PokerDecision.TYPE.RAISE, numChips - betRequiredToCall);
 					}
@@ -297,7 +317,7 @@ public class MyPokerPlayer implements PokerPlayer {
 					if(numChips > 250){
 						return new PokerDecision(PokerDecision.TYPE.CALL);
 					}
-					
+
 					return new PokerDecision(PokerDecision.TYPE.CALL);
 
 				} else if (bestHand.Category().ordinal() < 4){ // > 1 and < 4. OKAY cards
@@ -366,7 +386,7 @@ public class MyPokerPlayer implements PokerPlayer {
 			return null;
 		}
 	}
-	
+
 	public PokerHand bestHandCustom(List<PokerCard> holeCards) {
 		try {
 			int handSize = communityCards.size() + holeCards.size();
@@ -374,16 +394,16 @@ public class MyPokerPlayer implements PokerPlayer {
 			if (handSize == 5) {
 				String hand = PokerHandStringify(Stream.concat(communityCards.stream(), holeCards.stream()).collect(Collectors.toList()));
 				StrongestPossiblePokerHand = new PokerHand(hand);
-//				System.out.println(StrongestPossiblePokerHand + " in handSize 5!!");
+				//				System.out.println(StrongestPossiblePokerHand + " in handSize 5!!");
 				return StrongestPossiblePokerHand;
 			} else if (handSize == 6){
 				// Get strongest hand and put in single PokerHand
 				StrongestPossiblePokerHand = getAllCardsFromSixCards();
-//				System.out.println(StrongestPossiblePokerHand + " in handSize 6!!");
+				//				System.out.println(StrongestPossiblePokerHand + " in handSize 6!!");
 				return new PokerHand(StrongestPossiblePokerHand.toString().substring(0, StrongestPossiblePokerHand.toString().indexOf(",")).trim());
 			} else { // (hopefully) 7
 				StrongestPossiblePokerHand = getAllCardsFromSevenCards();
-//				System.out.println(StrongestPossiblePokerHand + " in handSize 7!!");
+				//				System.out.println(StrongestPossiblePokerHand + " in handSize 7!!");
 				return new PokerHand(StrongestPossiblePokerHand.toString().substring(0, StrongestPossiblePokerHand.toString().indexOf(",")).trim());
 			}
 		} catch (Exception E){
