@@ -239,7 +239,9 @@ public class MyPokerPlayer implements PokerPlayer {
 					
 					int raiseAmount = betRequiredToCall * 2;
 					
-					if(numChips - raiseAmount > 0) return raise(raiseAmount);
+					if(raiseAmount - numChips > 0) {
+						return raise(raiseAmount);	
+					}
 					
 					return call();
 					
@@ -334,7 +336,9 @@ public class MyPokerPlayer implements PokerPlayer {
 						
 						if(raiseAmount == 0) raiseAmount = game.bigBlind() * 2;
 						
-						if(numChips - raiseAmount > 0) return raise(raiseAmount);
+						if(raiseAmount - numChips> 0) {
+							return raise(raiseAmount);	
+						}
 						
 						return call();
 					}
@@ -359,21 +363,6 @@ public class MyPokerPlayer implements PokerPlayer {
 			return null;
 		}
 
-	}
-
-	public int raiseDecision(int betRequiredToCall){
-		System.out.println(betRequiredToCall);
-		int raiseN = 0;
-		if(numChips >= betRequiredToCall * 4){
-			raiseN = betRequiredToCall * 4;
-		} else if(numChips >= betRequiredToCall * 3){
-			raiseN = betRequiredToCall * 3;
-		} else if(numChips >= betRequiredToCall * 2){
-			raiseN = betRequiredToCall * 2;
-		} else {
-			raiseN = betRequiredToCall;
-		}
-		return raiseN;
 	}
 
 	/*
