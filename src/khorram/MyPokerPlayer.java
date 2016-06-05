@@ -15,7 +15,7 @@ public class MyPokerPlayer implements PokerPlayer {
 	// Changed to Map with key index and value list<PokerCard>
 	private static List<List<PokerCard>> allPossibleHoleCards;
 	// Keep track of how many other cards could exist.
-//	private static Map<Integer, Integer> stats;
+	//	private static Map<Integer, Integer> stats;
 	private int numChips;
 	private String id;
 	private List<PokerCard> holeCards;
@@ -24,8 +24,8 @@ public class MyPokerPlayer implements PokerPlayer {
 	private int sizeOfPot;
 	private int countRaise;
 	static {
-		
-		
+
+
 		allPossibleHoleCards = new ArrayList<List<PokerCard>>();
 		// All possible first cards
 		for(int i = 0; i < 51; i++){
@@ -133,15 +133,15 @@ public class MyPokerPlayer implements PokerPlayer {
 	public void setId(String id) {
 		this.id = id;
 	}
-	
+
 	public PokerDecision call(){
 		return new PokerDecision(PokerDecision.TYPE.CALL);
 	}
-	
+
 	public PokerDecision fold(){
 		return new PokerDecision(PokerDecision.TYPE.FOLD);
 	}
-	
+
 	public PokerDecision raise(int raiseAmount){
 		return new PokerDecision(PokerDecision.TYPE.RAISE, raiseAmount);
 	}
@@ -222,141 +222,110 @@ public class MyPokerPlayer implements PokerPlayer {
 				 * 
 				 * FOLD
 				 */
-				// If probability is too low, then just fold.
 				
-				if (probability > 20.00){
-					
-					// I've already raised, slow down and call.
-					if(countRaise > 0){
-						// reset countRaise back to 0:
-						countRaise = 0;
-						
-						// And immediately call
-						return call();
-					}
-					
-					countRaise++;
-					
-					int raiseAmount = betRequiredToCall * 2;
-					
-					if(raiseAmount - numChips > 0) {
-						return raise(raiseAmount);	
-					}
-					
-					return call();
-					
-				}
-				
-				if(probability > 10.00) return call();
-						
+				if(probability > 15.00) return call();
+
 				if(probability > 5.00 && sizeOfPot > 50) return call();
-				
+
 				return fold();
 
 			} else { // For Flop, River or Turn [0 - 8]
 
 				// Get my best hand
 				PokerHand bestHand = bestHand();
-				
+
 				System.out.println("bestHand ordinal: " + bestHand.Category().ordinal());
-				
+
 				// set up synchronized map to save all possible card combinations.
 				Map<Integer, Integer> stats = Collections.synchronizedMap(new HashMap<Integer, Integer>());
-				
+
 				// parallel processing:
 				allPossibleHoleCards.stream()
 				.parallel()
 				.map(set -> bestHandCustom(set)) // creates a list of PokerHand combinations.
 				.filter(hand -> hand.Category().ordinal() > bestHand.Category().ordinal())
 				.forEach(e -> stats.compute(e.Category().ordinal(), (k, v) -> v == null ? 1 : v + 1));
-				
+
 				// Print data [debug]
 				System.out.println("data: " + stats);
-				
+
 				// I have the best possible cards:
 				if (stats.size() == 0){
-					
+
 					// increment raiseCount by 1
 					countRaise++;
 					// Go all in
-					int raiseAllInAmount = numChips - betRequiredToCall;
-					
+					int raiseAllInAmount = (numChips - betRequiredToCall) - 150; // Keep at least 250 chips, just in case. 
+
 					// Check if raise all in amount would make me go to 0 or negative.
 					if(raiseAllInAmount <= 0){
 						// Raising any further would disqualify me, but I want to go all-in.
 						return new PokerDecision(PokerDecision.TYPE.CALL);
 					}
-					
+
 					// I have enough chips to actually raise.
 					return new PokerDecision(PokerDecision.TYPE.RAISE, raiseAllInAmount);
 				}
-				
-				
-					// Get sum of all card values
-					int possibleCombos = stats.entrySet().stream()
-			 			.parallel()
-			 			.mapToInt(e -> e.getValue())
-			 			.sum();
-					
-					/*
-					 * Starts checking all possible card combinations based on size.
-					 * 
-					 * 1326 possible combinations
-					 * 
-					 * if (< 50) RAISE 2* OR go all in
-					 * 
-					 * if(< 200) CALL
-					 * 
-					 * if(< 400 AND potOdds > 200) CALL; ELSE: FOLD
-					 * 
-					 * if(< 800) AND potOdds > 300 CALL; ELSE: FOLD
-					 * 
-					 * if(> 900 AND potOdds > 800) CALL; ELSE: FOLD
-					 * 
-					 * else FOLD
- 					 * 
-					 * 
-					 */
-					
-					
-					if (possibleCombos < 50) {
-						
-						// I've raised more than 2 times in a row, slow down and call.
-						if(countRaise > 3){
-							// reset countRaise back to 0:
-							countRaise = 0;
-							
-							// And immediately call
-							return call();
-						}
-						
-						
-						countRaise++;
-						int raiseAmount = betRequiredToCall * 2;
-						
-						if(raiseAmount == 0) raiseAmount = game.bigBlind() * 2;
-						
-						if(raiseAmount - numChips> 0) {
-							return raise(raiseAmount);	
-						}
-						
-						return call();
+
+
+				// Get sum of all card values
+				int possibleCombos = stats.entrySet().stream()
+						.parallel()
+						.mapToInt(e -> e.getValue())
+						.sum();
+
+				/*
+				 * Starts checking all possible card combinations based on size.
+				 * 
+				 * 1326 possible combinations
+				 * 
+				 * if (< 20) RAISE: Go ALL IN
+				 * 
+				 * if(< 200) CALL
+				 * 
+				 * if(< 400 AND potOdds > 200) CALL; ELSE: FOLD
+				 * 
+				 * if(< 800) AND potOdds > 300 CALL; ELSE: FOLD
+				 * 
+				 * if(> 900 AND potOdds > 800) CALL; ELSE: FOLD
+				 * 
+				 * else FOLD
+				 * 
+				 * 
+				 */
+
+
+				if (possibleCombos < 20) {
+
+					// increment raiseCount by 1
+					countRaise++;
+					// Go all in
+					int raiseAllInAmount = (numChips - betRequiredToCall) - 120; // Let's keep at least 400 chips.
+
+					// Check if raise all in amount would make me go to 0 or negative.
+					if(raiseAllInAmount <= 0){
+						// Raising any further would disqualify me, but I want to go all-in.
+						return new PokerDecision(PokerDecision.TYPE.CALL);
 					}
-					
-					if (possibleCombos < 225) return call();
-					
-					if (possibleCombos < 400 && sizeOfPot > 100) return call();
-					
-					if (possibleCombos < 800 && sizeOfPot > 200) return call();
-					
-					if (possibleCombos > 800 && sizeOfPot > 300) return call();
-					
-					// before folding, so I don't get disqualified for folding too often.
-					if (numChips < 50){
-						return call();
-					}
-					
-					return fold();
+
+					// I have enough chips to actually raise.
+					return new PokerDecision(PokerDecision.TYPE.RAISE, raiseAllInAmount);
+				}
+
+				if (possibleCombos < 200) return call();
+
+				if (possibleCombos < 400 && sizeOfPot > 200) return call();
+
+				if (possibleCombos < 800 && sizeOfPot > 400) return call();
+
+				if (possibleCombos > 800 && sizeOfPot > 600) return call();
+
+				// before folding, so I don't get disqualified for folding too often.
+				if (numChips < 25){
+					return call();
+				}
+
+				return fold();
 			}
 		} catch (Exception e){
 			e.printStackTrace();
