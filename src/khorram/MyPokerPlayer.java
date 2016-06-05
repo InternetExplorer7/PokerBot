@@ -258,25 +258,17 @@ public class MyPokerPlayer implements PokerPlayer {
 
 				// Get my best hand
 				PokerHand bestHand = bestHand();
-
-				System.out.println("my hand ordinal: " + bestHand.Category().ordinal() + "; str: " + bestHand.Category().toString());
 				
-				// Get sum
-				int sum = stats.entrySet().stream()
-				.parallel()
-				.mapToInt(e -> e.getValue())
-				.sum();
+				// Clear out previous results
+				stats.clear();
 				
-				stats.entrySet().stream()
-				.parallel()
-				.forEach(e -> stats.compute(e.getKey(), (k, v) -> sum >= 1326 ? 0 : v));
-
 				// parallel processing:
 				allPossibleHoleCards.stream()
+				.parallel()
 				.map(set -> bestHandCustom(set)) // creates a list of PokerHand combinations.
 				.forEach(e -> stats.compute(e.Category().ordinal(), (k, v) -> v == null ? 1 : v + 1));
-
-
+				
+				// Print data [debug]
 				System.out.println("data: " + stats);
 
 
@@ -372,11 +364,11 @@ public class MyPokerPlayer implements PokerPlayer {
 				return StrongestPossiblePokerHand;
 			} else if (handSize == 6){
 				// Get strongest hand and put in single PokerHand
-				StrongestPossiblePokerHand = getAllCardsFromSixCards();
+				StrongestPossiblePokerHand = getAllCardsFromSixCards(holeCards);
 				System.out.println(StrongestPossiblePokerHand + " in handSize 6!!");
 				return new PokerHand(StrongestPossiblePokerHand.toString().substring(0, StrongestPossiblePokerHand.toString().indexOf(",")).trim());
 			} else { // (hopefully) 7
-				StrongestPossiblePokerHand = getAllCardsFromSevenCards();
+				StrongestPossiblePokerHand = getAllCardsFromSevenCards(holeCards);
 				System.out.println(StrongestPossiblePokerHand + " in handSize 7!!");
 				return new PokerHand(StrongestPossiblePokerHand.toString().substring(0, StrongestPossiblePokerHand.toString().indexOf(",")).trim());
 			}
@@ -397,11 +389,11 @@ public class MyPokerPlayer implements PokerPlayer {
 				return StrongestPossiblePokerHand;
 			} else if (handSize == 6){
 				// Get strongest hand and put in single PokerHand
-				StrongestPossiblePokerHand = getAllCardsFromSixCards();
+				StrongestPossiblePokerHand = getAllCardsFromSixCards(holeCards);
 				//				System.out.println(StrongestPossiblePokerHand + " in handSize 6!!");
 				return new PokerHand(StrongestPossiblePokerHand.toString().substring(0, StrongestPossiblePokerHand.toString().indexOf(",")).trim());
 			} else { // (hopefully) 7
-				StrongestPossiblePokerHand = getAllCardsFromSevenCards();
+				StrongestPossiblePokerHand = getAllCardsFromSevenCards(holeCards);
 				//				System.out.println(StrongestPossiblePokerHand + " in handSize 7!!");
 				return new PokerHand(StrongestPossiblePokerHand.toString().substring(0, StrongestPossiblePokerHand.toString().indexOf(",")).trim());
 			}
@@ -423,7 +415,7 @@ public class MyPokerPlayer implements PokerPlayer {
 		return buildUp;
 	}
 
-	public PokerHand getAllCardsFromSevenCards(){
+	public PokerHand getAllCardsFromSevenCards(List<PokerCard> holeCards){
 		// Set up hands, these will include all possible variations.
 		List<PokerHand> hands = new ArrayList<PokerHand>();
 
@@ -455,7 +447,7 @@ public class MyPokerPlayer implements PokerPlayer {
 		return hands.get(0);
 	}
 
-	public PokerHand getAllCardsFromSixCards(){
+	public PokerHand getAllCardsFromSixCards(List<PokerCard> holeCards){
 		// Set up hands, these will include all possible variations.
 		List<PokerHand> hands = new ArrayList<PokerHand>();
 
@@ -473,14 +465,5 @@ public class MyPokerPlayer implements PokerPlayer {
 		// Sort all hands
 		Collections.sort(hands, Collections.reverseOrder());
 		return hands.get(0); // Highest pair
-	}
-
-	public static void readFlops() throws FileNotFoundException{
-		String buildUp = "";
-		Scanner console = new Scanner(new File("winning_perc_sheet.csv"));
-		console.nextLine(); // Remove first line
-		while(console.hasNextLine()){
-			buildUp += console.nextLine() + "; ";
-		}
 	}
 }
