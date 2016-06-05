@@ -22,12 +22,10 @@ public class MyPokerPlayer implements PokerPlayer {
 	private List<PokerCard> communityCards;
 	private static Map<String, ArrayList<Double>> preFlopPossibleOptions;
 	private int sizeOfPot;
+	private int countRaise;
 	static {
-
-		// initialize HashMap, Synchronize it for thread-safety.
-		// HIGH_CARD, PAIR, TWO_PAIR, THREE_OF_A_KIND, STRAIGHT, FLUSH, FULL_HOUSE, FOUR_OF_A_KIND, STRAIGHT_FLUSH
-//		stats = Collections.synchronizedMap(new HashMap<Integer, Integer>());
-
+		
+		
 		allPossibleHoleCards = new ArrayList<List<PokerCard>>();
 		// All possible first cards
 		for(int i = 0; i < 51; i++){
@@ -287,6 +285,9 @@ public class MyPokerPlayer implements PokerPlayer {
 				
 				// I have the best possible cards:
 				if (stats.size() == 0){
+					
+					// increment raiseCount by 1
+					countRaise++;
 					// Go all in
 					int raiseAllInAmount = numChips - betRequiredToCall;
 					
@@ -329,6 +330,7 @@ public class MyPokerPlayer implements PokerPlayer {
 					
 					
 					if (possibleCombos < 50) {
+						countRaise++;
 						int raiseAmount = betRequiredToCall * 2;
 						
 						if(raiseAmount == 0) raiseAmount = game.bigBlind() * 2;
@@ -338,13 +340,18 @@ public class MyPokerPlayer implements PokerPlayer {
 						return call();
 					}
 					
-					if (possibleCombos < 200) return call();
+					if (possibleCombos < 275) return call();
 					
-					if (possibleCombos < 400 && sizeOfPot > 200) return call();
+					if (possibleCombos < 400 && sizeOfPot > 100) return call();
 					
-					if (possibleCombos < 800 && sizeOfPot > 300) return call();
+					if (possibleCombos < 800 && sizeOfPot > 150) return call();
 					
-					if(possibleCombos > 900 && sizeOfPot > 800) return call();
+					if (possibleCombos > 800 && sizeOfPot > 250) return call();
+					
+					// before folding, so I don't get disqualified for folding too often.
+					if (numChips < 50){
+						return call();
+					}
 					
 					return fold();
 			}
