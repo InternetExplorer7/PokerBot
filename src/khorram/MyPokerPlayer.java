@@ -297,7 +297,7 @@ public class MyPokerPlayer implements PokerPlayer {
 					}
 					
 					// I have enough chips to actually raise.
-					return new PokerDecision(PokerDecision.TYPE.RAISE, numChips - betRequiredToCall);
+					return new PokerDecision(PokerDecision.TYPE.RAISE, raiseAllInAmount);
 				}
 				
 				
@@ -328,59 +328,26 @@ public class MyPokerPlayer implements PokerPlayer {
 					 */
 					
 					
-
-				// If I can check, do that instead.
-				if(betRequiredToCall == 0){
-					return new PokerDecision(PokerDecision.TYPE.CALL);
-				}
-
-				// I'm running low on chips.
-				if(numChips < 200 && numChips > 0){
-					// Check the size of the pot, might be worth it.
-					// > 600, large pot.
-					if(game.sizePot() > 1000){
-
-						// Go all in.
-						// set raiseAll amount.
-						int raiseAll = numChips - betRequiredToCall;
-
-						// Check if raiseAll is 0
-						if(raiseAll < 1){
-
-							// can't raise by 0, numChips is same as betRequiredToCall. Just call instead
-							return new PokerDecision(PokerDecision.TYPE.CALL);
-						}
-
-						// raiseAll is > 0, now we can go all in.
-						return new PokerDecision(PokerDecision.TYPE.RAISE, numChips - betRequiredToCall);
+					if (possibleCombos < 50) {
+						int raiseAmount = betRequiredToCall * 2;
+						
+						if(raiseAmount == 0) raiseAmount = game.bigBlind() * 2;
+						
+						if(numChips - raiseAmount > 0) return raise(raiseAmount);
+						
+						return call();
 					}
-
-					// counldn't check, just fold.
-					return new PokerDecision(PokerDecision.TYPE.CALL);
-				}
-
-				// Awful hand, just fold. very low chance of success, and still have good amount of chips in stack.
-				if(bestHand.Category().ordinal() < 1){
-					// Wait, I actually have quite a few chips..
-					if(numChips > 250){
-						return new PokerDecision(PokerDecision.TYPE.CALL);
-					}
-
-					return new PokerDecision(PokerDecision.TYPE.CALL);
-
-				} else if (bestHand.Category().ordinal() < 4){ // > 1 and < 4. OKAY cards
-
-					// Just Call
-					return new PokerDecision(PokerDecision.TYPE.CALL);
-
-				} else { // >= 4, GREAT cards.
-					int raiseAmount = raiseDecision(betRequiredToCall); // betRequiredToCall will ALWAYS be > 0
-
-					return new PokerDecision(PokerDecision.TYPE.RAISE, raiseAmount - betRequiredToCall);
-				}
+					
+					if (possibleCombos < 200) return call();
+					
+					if (possibleCombos < 400 && sizeOfPot > 200) return call();
+					
+					if (possibleCombos < 800 && sizeOfPot > 300) return call();
+					
+					if(possibleCombos > 900 && sizeOfPot > 800) return call();
+					
+					return fold();
 			}
-
-
 		} catch (Exception e){
 			e.printStackTrace();
 			return null;
