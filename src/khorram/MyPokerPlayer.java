@@ -15,7 +15,7 @@ public class MyPokerPlayer implements PokerPlayer {
 	// Changed to Map with key index and value list<PokerCard>
 	private static List<List<PokerCard>> allPossibleHoleCards;
 	// Keep track of how many other cards could exist.
-	private static Map<Integer, Integer> stats;
+//	private static Map<Integer, Integer> stats;
 	private int numChips;
 	private String id;
 	private List<PokerCard> holeCards;
@@ -26,7 +26,7 @@ public class MyPokerPlayer implements PokerPlayer {
 
 		// initialize HashMap, Synchronize it for thread-safety.
 		// HIGH_CARD, PAIR, TWO_PAIR, THREE_OF_A_KIND, STRAIGHT, FLUSH, FULL_HOUSE, FOUR_OF_A_KIND, STRAIGHT_FLUSH
-		stats = Collections.synchronizedMap(new HashMap<Integer, Integer>());
+//		stats = Collections.synchronizedMap(new HashMap<Integer, Integer>());
 
 		allPossibleHoleCards = new ArrayList<List<PokerCard>>();
 		// All possible first cards
@@ -103,7 +103,6 @@ public class MyPokerPlayer implements PokerPlayer {
 			// Clear out all cards from all sets
 			holeCards.clear();
 			communityCards.clear();
-			stats.clear();
 		}
 	}
 
@@ -135,6 +134,18 @@ public class MyPokerPlayer implements PokerPlayer {
 	@Override
 	public void setId(String id) {
 		this.id = id;
+	}
+	
+	public PokerDecision call(){
+		return new PokerDecision(PokerDecision.TYPE.CALL);
+	}
+	
+	public PokerDecision fold(){
+		return new PokerDecision(PokerDecision.TYPE.FOLD);
+	}
+	
+	public PokerDecision raise(int raiseAmount){
+		return new PokerDecision(PokerDecision.TYPE.RAISE, raiseAmount);
 	}
 
 	@Override
@@ -259,18 +270,64 @@ public class MyPokerPlayer implements PokerPlayer {
 				// Get my best hand
 				PokerHand bestHand = bestHand();
 				
-				// Clear out previous results
-				stats.clear();
+				System.out.println("bestHand ordinal: " + bestHand.Category().ordinal());
+				
+				// set up synchronized map to save all possible card combinations.
+				Map<Integer, Integer> stats = Collections.synchronizedMap(new HashMap<Integer, Integer>());
 				
 				// parallel processing:
 				allPossibleHoleCards.stream()
 				.parallel()
 				.map(set -> bestHandCustom(set)) // creates a list of PokerHand combinations.
+				.filter(hand -> hand.Category().ordinal() > bestHand.Category().ordinal())
 				.forEach(e -> stats.compute(e.Category().ordinal(), (k, v) -> v == null ? 1 : v + 1));
 				
 				// Print data [debug]
 				System.out.println("data: " + stats);
-
+				
+				// I have the best possible cards:
+				if (stats.size() == 0){
+					// Go all in
+					int raiseAllInAmount = numChips - betRequiredToCall;
+					
+					// Check if raise all in amount would make me go to 0 or negative.
+					if(raiseAllInAmount <= 0){
+						// Raising any further would disqualify me, but I want to go all-in.
+						return new PokerDecision(PokerDecision.TYPE.CALL);
+					}
+					
+					// I have enough chips to actually raise.
+					return new PokerDecision(PokerDecision.TYPE.RAISE, numChips - betRequiredToCall);
+				}
+				
+				
+					// Get sum of all card values
+					int possibleCombos = stats.entrySet().stream()
+			 			.parallel()
+			 			.mapToInt(e -> e.getValue())
+			 			.sum();
+					
+					/*
+					 * Starts checking all possible card combinations based on size.
+					 * 
+					 * 1326 possible combinations
+					 * 
+					 * if (< 50) RAISE 2* OR go all in
+					 * 
+					 * if(< 200) CALL
+					 * 
+					 * if(< 400 AND potOdds > 200) CALL; ELSE: FOLD
+					 * 
+					 * if(< 800) AND potOdds > 300 CALL; ELSE: FOLD
+					 * 
+					 * if(> 900 AND potOdds > 800) CALL; ELSE: FOLD
+					 * 
+					 * else FOLD
+ 					 * 
+					 * 
+					 */
+					
+					
 
 				// If I can check, do that instead.
 				if(betRequiredToCall == 0){
